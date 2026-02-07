@@ -1,1 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Propose Day | The Celestial Vow</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,400&family=Montserrat:wght@200;400;600&display=swap" rel="stylesheet">
+    
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
+    <style>
+        :root {
+            --primary: #ff4d6d;
+            --secondary: #2c2c54; /* Deep Midnight Blue */
+            --gold: #ffd700;
+            --dark: #050505;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            overflow: hidden;
+            background-color: var(--dark);
+            font-family: 'Montserrat', sans-serif;
+            color: white;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* --- 3D Canvas --- */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            /* Subtle gradient overlay for vignette effect */
+            background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);
+        }
+
+        /* --- UI Layer --- */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: clamp(1rem, 2vw, 3rem);
+        }
+
+        /* --- Header --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(-20px);
+            pointer-events: auto;
+        }
+
+        .brand {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            font-size: clamp(1.2rem, 2vw, 1.8rem);
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+
+        .date {
+            font-size: clamp(0.7rem, 1vw, 0.9rem);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            border: 1px solid var(--glass-border);
+            padding: 5px 15px;
+            border-radius: 50px;
+            background: var(--glass);
+            backdrop-filter: blur(5px);
+        }
+
+        /* --- Main Content --- */
+        .center-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            text-align: center;
+            pointer-events: auto;
+            max-width: 90%; /* Ensure it doesn't hit edges on mobile */
+        }
+
+        /* --- Buttons --- */
+        #init-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: clamp(0.8rem, 2vw, 1rem) clamp(2rem, 5vw, 3rem);
+            font-family: 'Montserrat', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            font-size: clamp(0.7rem, 1.5vw, 0.9rem);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(10px);
+            border-radius: 50px;
+            opacity: 0;
+        }
+
+        #init-btn:hover {
+            background: white;
+            color: var(--dark);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+            transform: scale(1.05);
+        }
+
+        /* --- Proposal Card --- */
+        #proposal-card {
+            opacity: 0;
+            visibility: hidden;
+            background: rgba(10, 10, 15, 0.75);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            padding: clamp(2rem, 4vw, 3rem);
+            border-radius: 20px;
+            transform: translateY(20px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            position: relative; /* For relative positioning of buttons */
+        }
+
+        h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #fff 0%, #ffc3a0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.1;
+        }
+
+        p.message {
+            font-weight: 300;
+            font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+            line-height: 1.6;
+            margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+            color: rgba(255,255,255,0.9);
+        }
+
+        .buttons {
+            display: flex;
+            gap: clamp(1rem, 2vw, 2rem);
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            position: relative; /* Context for 'No' button absolute movement */
+            min-height: 60px; /* Prevent layout shift when No button moves */
+        }
+
+        .btn {
+            padding: clamp(0.8rem, 2vw, 1.2rem) clamp(1.5rem, 4vw, 2.5rem);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: clamp(0.8rem, 1.5vw, 1rem);
+            transition: transform 0.2s;
+            flex: 1; /* Allow buttons to grow equally */
+            max-width: 200px;
+        }
+
+        .btn-yes {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 20px rgba(255, 77, 109, 0.4);
+            z-index: 2; /* Ensure Yes stays on top */
+        }
+        
+        .btn-yes:active { transform: scale(0.95); }
+
+        .btn-no {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            position: absolute; /* Changed to absolute for the run-away effect */
+            right: 0; /* Default position */
+            /* We will calculate dynamic position via JS, 
+               but setting absolute ensures it doesn't shift layout when moved */
+        }
+
+        /* --- Footer --- */
+        footer {
+            text-align: center;
+            font-size: clamp(0.6rem, 1vw, 0.75rem);
+            opacity: 0;
+            color: rgba(255,255,255,0.4);
+            pointer-events: auto;
+        }
+
+        /* --- Loading Screen --- */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark);
+            z-index: 20;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .loader-bar {
+            width: 200px;
+            height: 2px;
+            background: rgba(255,255,255,0.1);
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loader-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+            transition: width 0.5s ease;
+        }
+        
+        .loader-text {
+            font-family: 'Cormorant Garamond', serif;
+            letter-spacing: 5px;
+            font-size: 1rem;
+            animation: pulse 2s infinite;
+        }
+
+        /* --- Success Overlay --- */
+        #success-msg {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 15;
+            width: 100%;
+            pointer-events: none;
+        }
+        
+        #success-msg h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(3rem, 8vw, 5rem);
+            color: var(--gold);
+            text-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+            background: -webkit-linear-gradient(#ffd700, #ffec8b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; transform: scale(0.98); }
+            50% { opacity: 1; transform: scale(1.02); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loader">
+        <div class="loader-text">LOADING UNIVERSE</div>
+        <div class="loader-bar">
+            <div class="loader-progress" id="progress"></div>
+        </div>
+    </div>
+
+    <!-- 3D Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer">
+        <header>
+        </header>
+
+        <div class="center-screen">
+            <button id="init-btn">Feel MY Heart</button>
+            
+            <div id="proposal-card">
+                <h1>A Question for Eternity</h1>
+                <p class="message">
+                    Life is a collection of moments, but none shine as brightly as the ones spent with you.
+                    In a universe of infinite possibilities, you are my constant.
+                    <br><br>
+                    Will you spend forever with me?
+                </p>
+                <div class="buttons">
+                    <button class="btn btn-yes" id="yes-btn">Yes, Forever</button>
+                    <button class="btn btn-no" id="no-btn">No</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="success-msg">
+            <h2>Forever Starts Now</h2>
+        </div>
+
+        <footer>
+            Drag to rotate &bull; Interactive 3D Experience
+        </footer>
+    </div>
+
+    <script>
+        // --- 1. CONFIGURATION & STATE ---
+        const config = {
+            particleCount: window.innerWidth < 768 ? 4000 : 7000, // Optimize for mobile
+            particleSize: 0.12,
+            heartColor: 0xff4d6d,
+            ringColor: 0xffd700,
+            bgColor: 0x050505,
+            dustCount: 300 // Foreground particles
+        };
+
+        let scene, camera, renderer;
+        let heartSystem, ringMesh, dustSystem, floorMesh;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let isExploded = false;
+        let isTouchDevice = false;
+
+        // DOM Elements
+        const container = document.getElementById('canvas-container');
+        const loader = document.getElementById('loader');
+        const progressBar = document.getElementById('progress');
+        const initBtn = document.getElementById('init-btn');
+        const proposalCard = document.getElementById('proposal-card');
+        const yesBtn = document.getElementById('yes-btn');
+        const noBtn = document.getElementById('no-btn');
+        const successMsg = document.getElementById('success-msg');
+        const header = document.querySelector('header');
+        const footer = document.querySelector('footer');
+        const uiLayer = document.getElementById('ui-layer');
+
+        // --- 2. INITIALIZATION ---
+        function init() {
+            // Detect Touch
+            isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+            // Scene Setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x050505, 0.02); // Atmospheric depth
+
+            // Camera Setup
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 12); // Slightly elevated view
+            camera.lookAt(0, 0, 0);
+
+            // Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            // Tone mapping for cinematic lighting
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            container.appendChild(renderer.domElement);
+
+            // --- LIGHTING ---
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // Soft white light
+            scene.add(ambientLight);
+
+            // Key Light (Warm Gold)
+            const spotLight = new THREE.SpotLight(0xffecd2, 1.5);
+            spotLight.position.set(10, 20, 10);
+            spotLight.angle = Math.PI / 6;
+            spotLight.penumbra = 1;
+            spotLight.castShadow = true;
+            spotLight.shadow.bias = -0.0001;
+            scene.add(spotLight);
+
+            // Rim Light (Pink/Cool) for contour
+            const rimLight = new THREE.PointLight(0xff0080, 2, 50);
+            rimLight.position.set(-10, 5, -10);
+            scene.add(rimLight);
+
+            // Fill Light (Blueish)
+            const fillLight = new THREE.PointLight(0x0044ff, 0.5, 50);
+            fillLight.position.set(0, -10, 10);
+            scene.add(fillLight);
+
+            // --- OBJECT CREATION ---
+            createReflectiveFloor();
+            createHeart();
+            createRing();
+            createForegroundDust();
+            createStars();
+
+            // --- EVENTS ---
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('mousemove', onMouseMove);
+            
+            // Touch Events for Rotation
+            container.addEventListener('touchstart', onTouchStart, { passive: false });
+            container.addEventListener('touchmove', onTouchMove, { passive: false });
+            container.addEventListener('touchend', onTouchEnd);
+
+            // Loading Sequence
+            setTimeout(() => {
+                progressBar.style.width = '100%';
+                setTimeout(revealUI, 800);
+            }, 500);
+
+            animate();
+        }
+
+        // --- 3. OBJECT CREATION ---
+
+        // Helper: Create a soft glow texture programmatically
+        function createGlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const context = canvas.getContext('2d');
+            const gradient = context.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+            gradient.addColorStop(0.5, 'rgba(255,255,255,0.2)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 32, 32);
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+
+        function createReflectiveFloor() {
+            // A shiny, dark floor to reflect the light and particles
+            const geometry = new THREE.PlaneGeometry(100, 100);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                roughness: 0.1, // Very shiny
+                metalness: 0.8
+            });
+            floorMesh = new THREE.Mesh(geometry, material);
+            floorMesh.rotation.x = -Math.PI / 2;
+            floorMesh.position.y = -3;
+            floorMesh.receiveShadow = true;
+            scene.add(floorMesh);
+        }
+
+        function createHeart() {
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const sizes = [];
+            
+            // Heart Formula
+            for (let i = 0; i < config.particleCount; i++) {
+                const t = Math.random() * Math.PI * 2;
+                const r = Math.random();
+                
+                // Volume Distribution (more particles in center)
+                const spread = Math.pow(r, 0.5); 
+
+                let x = 16 * Math.pow(Math.sin(t), 3);
+                let y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+                let z = (Math.random() - 0.5) * 12 * spread;
+
+                const scale = 0.15;
+                x *= scale * spread;
+                y *= scale * spread;
+                z *= scale * spread;
+
+                positions.push(x, y, z);
+                sizes.push(Math.random());
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+
+            const material = new THREE.PointsMaterial({
+                size: config.particleSize,
+                color: config.heartColor,
+                map: createGlowTexture(),
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending,
+                sizeAttenuation: true,
+                depthWrite: false
+            });
+
+            heartSystem = new THREE.Points(geometry, material);
+            scene.add(heartSystem);
+        }
+
+        function createRing() {
+            const geometry = new THREE.TorusGeometry(2.2, 0.15, 32, 100);
+            const material = new THREE.MeshStandardMaterial({
+                color: config.ringColor,
+                metalness: 1.0,
+                roughness: 0.1,
+                envMapIntensity: 1
+            });
+            ringMesh = new THREE.Mesh(geometry, material);
+            
+            // Add Diamond
+            const diamondGeo = new THREE.OctahedronGeometry(0.5);
+            const diamondMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                transmission: 0.9,
+                opacity: 1,
+                metalness: 0,
+                roughness: 0,
+                ior: 2.4,
+                thickness: 0.5,
+                clearcoat: 1
+            });
+            const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+            diamond.position.y = 2.2; // Sit on top of ring
+            ringMesh.add(diamond);
+
+            ringMesh.rotation.x = Math.PI / 2;
+            ringMesh.position.set(0, -2, 0);
+            ringMesh.visible = false; // Hidden initially
+            scene.add(ringMesh);
+        }
+
+        function createForegroundDust() {
+            // Particles that are very close to camera to give depth
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            for(let i=0; i<config.dustCount; i++) {
+                positions.push((Math.random()-0.5)*40, (Math.random()-0.5)*40, (Math.random()-0.5)*40);
+            }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            const material = new THREE.PointsMaterial({
+                size: 0.08,
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.4,
+                blending: THREE.AdditiveBlending
+            });
+            dustSystem = new THREE.Points(geometry, material);
+            scene.add(dustSystem);
+        }
+
+        function createStars() {
+            const geometry = new THREE.BufferGeometry();
+            const count = 1000;
+            const positions = new Float32Array(count * 3);
+            for(let i=0; i<count*3; i++) {
+                positions[i] = (Math.random() - 0.5) * 100;
+            }
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const material = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05, transparent: true, opacity: 0.3 });
+            const stars = new THREE.Points(geometry, material);
+            scene.add(stars);
+        }
+
+        // --- 4. ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const time = Date.now() * 0.001;
+
+            // --- 1. Rotation Logic ---
+            if (heartSystem) {
+                // Idle Rotation
+                heartSystem.rotation.y += 0.002;
+                
+                // Interactive Rotation (Lerp)
+                heartSystem.rotation.y += (targetRotationY - heartSystem.rotation.y) * 0.05;
+                heartSystem.rotation.x += (targetRotationX - heartSystem.rotation.x) * 0.05;
+
+                // Realistic Heartbeat (Lub-Dub)
+                // Using a custom function to simulate two beats
+                let beat = 0;
+                if (!isExploded) {
+                    // First beat
+                    if (time % 1 < 0.1) beat = Math.sin((time % 1) * Math.PI * 10) * 0.05;
+                    // Second beat (smaller)
+                    else if (time % 1 > 0.3 && time % 1 < 0.4) beat = Math.sin(((time % 1) - 0.3) * Math.PI * 10) * 0.03;
+                    
+                    heartSystem.scale.set(1 + beat, 1 + beat, 1 + beat);
+                    heartSystem.position.y = Math.sin(time) * 0.2; // Float
+                } 
+                else if (isExploded) {
+                    // Explosion logic
+                    heartSystem.rotation.y += 0.05;
+                }
+            }
+
+            // Ring Animation
+            if (ringMesh && ringMesh.visible) {
+                ringMesh.rotation.x = Math.PI / 2 + Math.sin(time * 2) * 0.1;
+                ringMesh.rotation.z = Math.sin(time) * 0.1;
+            }
+
+            // Dust Animation (Drift)
+            if (dustSystem) {
+                dustSystem.rotation.y -= 0.0005;
+            }
+
+            // Render
+            renderer.render(scene, camera);
+        }
+
+        // --- 5. INTERACTION LOGIC ---
+
+        function revealUI() {
+            gsap.to(loader, { opacity: 0, duration: 1, onComplete: () => loader.style.display = 'none' });
+            gsap.to(header, { opacity: 1, y: 0, duration: 1, delay: 0.5 });
+            gsap.to(footer, { opacity: 1, duration: 1, delay: 0.5 });
+            gsap.fromTo(initBtn, 
+                { scale: 0.8, opacity: 0 }, 
+                { scale: 1, opacity: 1, duration: 1.2, delay: 1, ease: "back.out(1.7)" }
+            );
+        }
+
+        // Mouse Parallax for Camera (Subtle feel)
+        function onMouseMove(event) {
+            if (isTouchDevice) return; // Disable on touch
+            mouseX = (event.clientX - window.innerWidth / 2) * 0.0005;
+            mouseY = (event.clientY - window.innerHeight / 2) * 0.0005;
+
+            gsap.to(camera.position, {
+                x: mouseX * 10,
+                y: 2 + mouseY * 5,
+                duration: 2
+            });
+            camera.lookAt(0, 0, 0);
+        }
+
+        // Touch Handling (Drag to Rotate Heart)
+        let touchStartX = 0;
+        function onTouchStart(e) {
+            touchStartX = e.touches[0].clientX;
+        }
+        function onTouchMove(e) {
+            const touchX = e.touches[0].clientX;
+            const deltaX = touchX - touchStartX;
+            targetRotationY += deltaX * 0.005;
+            touchStartX = touchX;
+        }
+        function onTouchEnd() { /* Optional reset */ }
+
+
+        // --- 6. TRANSITIONS ---
+
+        initBtn.addEventListener('click', () => {
+            // 1. Hide Button
+            gsap.to(initBtn, { scale: 0, opacity: 0, duration: 0.5, onComplete: () => initBtn.style.display = 'none' });
+
+            // 2. Cinematic Camera Move (Orbit + Zoom)
+            gsap.to(camera.position, {
+                z: 6,
+                y: 1,
+                duration: 2.5,
+                ease: "power3.inOut"
+            });
+
+            // 3. Show Ring (Materialize)
+            ringMesh.visible = true;
+            ringMesh.scale.set(0,0,0);
+            gsap.to(ringMesh.scale, { x:1, y:1, z:1, duration: 1, delay: 0.5, ease: "back.out(1.7)" });
+
+            // 4. Scale Down Heart to Frame the Ring
+            gsap.to(heartSystem.scale, {
+                x: 0.7, y: 0.7, z: 0.7,
+                duration: 2,
+                delay: 0.5
+            });
+
+            // 5. Show Proposal Card
+            setTimeout(() => {
+                proposalCard.style.visibility = 'visible';
+                gsap.to(proposalCard, { opacity: 1, y: 0, duration: 1, ease: "power2.out" });
+            }, 1500);
+        });
+
+        // YES Logic
+        yesBtn.addEventListener('click', () => {
+            isExploded = true;
+            
+            // Hide UI
+            gsap.to(proposalCard, { opacity: 0, y: 50, duration: 0.5 });
+            gsap.to(header, { opacity: 0, duration: 0.5 });
+            gsap.to(footer, { opacity: 0, duration: 0.5 });
+
+            // Camera Dramatic Pull Back
+            gsap.to(camera.position, { z: 15, y: 3, duration: 2 });
+
+            // Explosion Effect
+            const positions = heartSystem.geometry.attributes.position.array;
+            const originalPositions = []; // We use scale for simplicity in this version
+            
+            gsap.to(heartSystem.scale, { 
+                x: 6, y: 6, z: 6, 
+                duration: 2, 
+                ease: "expo.out" 
+            });
+            
+            gsap.to(heartSystem.material, { opacity: 0, duration: 2 });
+            
+            // Ring Spin
+            gsap.to(ringMesh.rotation, { y: 20, duration: 3, ease: "power2.in" });
+
+            // Success Message
+            setTimeout(() => {
+                successMsg.style.display = 'block';
+                gsap.fromTo(successMsg, 
+                    { scale: 0, opacity: 0 }, 
+                    { scale: 1, opacity: 1, duration: 1.5, ease: "elastic.out(1, 0.3)" }
+                );
+            }, 1000);
+        });
+
+        // NO Button Logic (Run away)
+        noBtn.addEventListener('mouseover', moveNoButton);
+        noBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent click
+            moveNoButton();
+        });
+
+        function moveNoButton() {
+            const cardRect = proposalCard.getBoundingClientRect();
+            const btnRect = noBtn.getBoundingClientRect();
+            
+            // Calculate available space
+            const maxX = (cardRect.width / 2) - (btnRect.width / 2) - 20;
+            const maxY = (cardRect.height / 2) - (btnRect.height / 2) - 20;
+            
+            const x = (Math.random() - 0.5) * 2 * maxX;
+            const y = (Math.random() - 0.5) * 2 * maxY;
+
+            gsap.to(noBtn, {
+                x: x,
+                y: y,
+                duration: 0.4,
+                ease: "power2.out"
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        init();
+
+    </script>
+</body>
+</html>
